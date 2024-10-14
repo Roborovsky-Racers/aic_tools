@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-import rclpy
 import rosbag2_py
-
+import rclpy
 
 def trim_bag(input_bag: str, output_bag: str, start_time: float, end_time: float):
     storage_options = rosbag2_py.StorageOptions(
