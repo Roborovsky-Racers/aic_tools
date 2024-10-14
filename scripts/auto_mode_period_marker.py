@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-from typing import List
 import pandas as pd
 import rclpy
 from rclpy.node import Node
 from autoware_auto_vehicle_msgs.msg import ControlModeReport
-from aic_tools.bag_tools import trim_bag
 
 
 class AutonomousModePeriodMarker(Node):
@@ -52,12 +50,6 @@ class AutonomousModePeriodMarker(Node):
     def dump_auto_period_as_csv(self):
         self.auto_periods.to_csv('auto_period.csv', index=False)
 
-    def trim_bag(self):
-        for i in range(len(self.auto_periods)):
-            trim_bag(
-                "/aichallenge/workspace/rosbag2_autoware/rosbag2_2024_10_11-18_03_34/rosbag2_2024_10_11-18_03_34_0.db3",
-                f"/aichallenge/workspace/rosbag2_autoware/rosbag2_2024_10_11-18_03_34/rosbag2_2024_10_11-18_03_34_0_{i}.db3",
-                self.auto_periods['start'][i],self.auto_periods['end'][i])
 
     @staticmethod
     def time_msg_to_sec(msg) -> float:
@@ -81,6 +73,5 @@ if __name__ == "__main__":
             node._current_start_time = None
         print(node.auto_periods)
         node.dump_auto_period_as_csv()
-        node.trim_bag()
         node.destroy_node()
         rclpy.shutdown()

@@ -21,11 +21,10 @@ ament_python_install_package(${PROJECT_NAME}
 )
 
 install(PROGRAMS
-  aic_tools/bag_tools.py
   scripts/obstacle_parser.py
   scripts/publish_initialpose.py
   scripts/trim_bag.py
-  scripts/control_mode_monitor.py
+  scripts/auto_mode_period_marker.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
