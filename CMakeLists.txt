@@ -24,7 +24,30 @@ install(PROGRAMS
   scripts/obstacle_parser.py
   scripts/publish_initialpose.py
   scripts/trim_bag.py
+  scripts/analyze_bag.py
+  scripts/analyze_bag.bash
   DESTINATION lib/${PROJECT_NAME}
 )
 
-ament_auto_package()
+# create python virtual environment
+execute_process(
+  COMMAND /usr/bin/python3 -m venv ${CMAKE_INSTALL_PREFIX}/.venv/analyze_bag
+  RESULT_VARIABLE venv_result
+)
+if(venv_result)
+    message(FATAL_ERROR "Failed to create virtual environment")
+endif()
+
+# install python dependencies in virtual environment
+execute_process(
+    COMMAND ${CMAKE_INSTALL_PREFIX}/.venv/analyze_bag/bin/pip install -r ./resources/requirements/analyze_bag.txt
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    RESULT_VARIABLE install_result
+)
+if(install_result)
+    message(FATAL_ERROR "Failed to install python dependencies in virtual environment")
+endif()
+
+ament_auto_package(INSTALL_TO_SHARE
+  resources
+)
