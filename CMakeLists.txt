@@ -26,6 +26,7 @@ install(PROGRAMS
   scripts/trim_bag.py
   scripts/analyze_bag.py
   scripts/analyze_bag.bash
+  scripts/auto_mode_period_marker.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
