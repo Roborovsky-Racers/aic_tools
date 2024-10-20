@@ -14,7 +14,7 @@ class VelocityHeatOdomVisualizer(Node):
     MIN_VELOCITY = 2.77 # m/s (10 km/h)
     # MAX_VELOCITY = 8.3 # m/s (30 km/h)
     MAX_VELOCITY = 6.94 # m/s (25 km/h)
-    PUB_RATE = 2.0 # Hz
+    PUB_RATE = 1.0 # Hz
 
     def __init__(self) -> None:
         super().__init__("velocity_heat_odom_visualizer")
