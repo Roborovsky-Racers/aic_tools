@@ -43,20 +43,32 @@ def plot_trajectory(
     dataframes,
     df,
     reset_points,
-    t0,
-    t1,
-    tg,
+    t0=None,
+    t1=None,
+    tg=None,
+    plot_gyro_odom=False,
     plot_gnss=False,
     plot_orientation=False,
     plot_velocity_text=False,
 ):
+    if t0 is None:
+        t0 = 0
+    if t1 is None:
+        t1 = len(df.stamp)
+
     # 軌跡をプロット
     ax.plot(df.ekf_x[t0:t1], df.ekf_y[t0:t1], label="ekf")
-    ax.plot(df.gyro_odom_x[t0:t1], df.gyro_odom_y[t0:t1], label="gyro odom")
+
+    if plot_gyro_odom:
+        ax.plot(df.gyro_odom_x[t0:t1], df.gyro_odom_y[t0:t1], label="gyro odom")
 
     if plot_gnss:
         # ax.plot(df.gnss_x[t0:t1], df.gnss_y[t0:t1], 'o', markersize=1.0, label="gnss")
         gnss_df = dataframes[GnssPoseHandler.TOPIC_NAME]  # 補間前のGNSSデータ
+
+        if tg is None:
+            tg = len(gnss_df.stamp)
+
         ax.plot(
             gnss_df.gnss_x[0:tg],
             gnss_df.gnss_y[0:tg],

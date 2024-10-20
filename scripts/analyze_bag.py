@@ -31,6 +31,7 @@ from aic_tools.data_plotter import (
 def main():
     rclpy.init()
 
+    SAVE_PLOT=False
     INPUT_BAG_DIRECTORY = Path(
         "/logs/20241011_training/rosbag_trim/rosbag2_2024_10_11-18_03_34_trim_12/"
         # "/logs/20241011_training/rosbag_trim/rosbag2_2024_10_11-18_03_34_trim_7/"
@@ -70,7 +71,7 @@ def main():
     # EKFローカリゼーションの位置を基準にジャイロオドメトリを補正する
     # reset_localization_indicesはEKFローカリゼーションの位置を基準にジャイロオドメトリを補正するためのリセットポイントのインデックス
     reset_localization_indices = []
-    reset_localization_indices = [3000, 4600, 6000, 7300, 9100]
+    # reset_localization_indices = [3000, 4600, 6000, 7300, 9100]
     # reset_localization_indices = [3000, 4600, 6000, 9100]
     reset_points = compensate_gyro_odometry_by_ekf_localization(
         df, reset_localization_indices
@@ -85,11 +86,10 @@ def main():
         dataframes,
         df,
         reset_points,
-        t0=0,
-        t1=14000,
         # t0=0,
         # t1=14000,
-        tg=1200,
+        # tg=1200,
+        plot_gyro_odom=False,
         plot_gnss=True,
         plot_orientation=False,
         plot_velocity_text=True,
@@ -98,7 +98,15 @@ def main():
     ax.legend()
     ax.grid()
     plt.gca().set_aspect("equal", adjustable="box")
-    plt.show()
+    
+    if SAVE_PLOT:
+        # save the plot as a png file
+        bag_name = INPUT_BAG_DIRECTORY.name
+        save_path = "/aichallenge/workspace/png/" + bag_name + ".png"
+        print("save_path: ", save_path)
+        plt.savefig(save_path)
+    else:
+        plt.show()
 
     # plot_velocity_acceleration(dataframes, df)
 
@@ -106,4 +114,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    for i in range(1, 13):
+      main(i)
