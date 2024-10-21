@@ -43,14 +43,16 @@ def read_messages(input_bag: Path, topics: list[str]):
 
 
 def convert_bag_to_csv(
-    input_bag_directory: Path, active_handlers: list[TopicHandlerRegistry]
+    input_bag_directory: str,
+    active_handlers: list[TopicHandlerRegistry],
+    overwrite: bool,
 ):
 
     csv_paths = [
-        Path(input_bag_directory / f"{handler.get_under_scored_topic_name()}.csv")
+        Path(input_bag_directory) / f"{handler.get_under_scored_topic_name()}.csv"
         for handler in active_handlers
     ]
-    if all([csv_path.exists() for csv_path in csv_paths]):
+    if (not overwrite) and all([csv_path.exists() for csv_path in csv_paths]):
         print("csv files already exist")
         return
 
@@ -75,11 +77,11 @@ def convert_bag_to_csv(
             write_to_csv(topic, handler.process_message(msg, timestamp))
 
 
-def load_csv(base_path: Path, active_handler: list[TopicHandlerRegistry]):
+def load_csv(base_path: str, active_handler: list[TopicHandlerRegistry]):
     dataframes = {}
 
     for handler in active_handler:
-        csv_path = base_path / f"{handler.get_under_scored_topic_name()}.csv"
+        csv_path = Path(base_path) / f"{handler.get_under_scored_topic_name()}.csv"
         if not csv_path.exists():
             print(f"{csv_path} not found")
             return
@@ -88,4 +90,3 @@ def load_csv(base_path: Path, active_handler: list[TopicHandlerRegistry]):
         # print(dataframes[name].dtypes)
 
     return dataframes
-

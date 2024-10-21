@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-import rclpy
+import sys
+import argparse
 from pathlib import Path
-
 import matplotlib.pyplot as plt
+
+import rclpy
 
 from aic_tools.topic_handler import (
     TopicHandlerRegistry,
@@ -12,13 +14,11 @@ from aic_tools.topic_handler import (
     ImuDataHandler,
     GnssPoseHandler,
 )
-
 from aic_tools.rosbag_converter import convert_bag_to_csv, load_csv
+from aic_tools.config_loader import try_load_mpc_config
 from aic_tools.data_loader import load_reference_path, load_occupancy_grid_map
 from aic_tools.data_processor import (
     interpolate_dataframes,
-    compute_gyro_odometry,
-    compensate_gyro_odometry_by_ekf_localization,
 )
 from aic_tools.data_plotter import (
     plot_map_in_world,
@@ -28,14 +28,51 @@ from aic_tools.data_plotter import (
 )
 
 
-def main():
-    rclpy.init()
+def parse_args(argv):
+    (OCCUPANCY_GRID_MAP_YAML_PATH, REFERENCE_PATH_CSV_PATH) = try_load_mpc_config()
 
-    SAVE_PLOT=False
-    INPUT_BAG_DIRECTORY = Path(
-        "/logs/20241011_training/rosbag_trim/rosbag2_2024_10_11-18_03_34_trim_12/"
-        # "/logs/20241011_training/rosbag_trim/rosbag2_2024_10_11-18_03_34_trim_7/"
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "input_bag_directory",
+        type=str,
+        help="Directory where bag files (*.db3 and metadata.yaml) are stored",
     )
+    parser.add_argument(
+        "-r",
+        "--reference_path_csv_path",
+        type=str,
+        help="Path to the reference path csv file",
+        default=REFERENCE_PATH_CSV_PATH,
+    )
+    parser.add_argument(
+        "-m",
+        "--map_yaml_path",
+        type=str,
+        help="Path to the occupancy grid map yaml file",
+        default=OCCUPANCY_GRID_MAP_YAML_PATH,
+    )
+    parser.add_argument(
+        "-w",
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing csv files",
+    )
+    parser.add_argument(
+        "-s",
+        "--save_plot",
+        action="store_true",
+        help="Save the plot as a png file",
+    )
+
+    args = parser.parse_args(argv)
+    return args
+
+
+def main(argv=sys.argv):
+    rclpy.init(args=argv)
+    args_without_ros = rclpy.utilities.remove_ros_args(argv)  # type: ignore
+    args = parse_args(args_without_ros[1:])
+
     TARGET_HANDLERS = [
         LocalizationHandler,
         VelocityStatusHandler,
@@ -44,48 +81,32 @@ def main():
         GnssPoseHandler,
     ]
 
-    REFERENCE_PATH_CSV_PATH = Path(
-        "/aichallenge/workspace/src/aichallenge_submit/multi_purpose_mpc_ros/multi_purpose_mpc_ros/env/final_ver2/traj_mincurv.csv"
-    )
-    OCCUPANCY_GRID_MAP_YAML_PATH = Path(
-        "/aichallenge/workspace/src/aichallenge_submit/multi_purpose_mpc_ros/multi_purpose_mpc_ros/env/final_ver2/occupancy_grid_map.yaml"
-    )
-
     # 指定された HANDLERS をアクティブにする
     TopicHandlerRegistry.activate_handlers(TARGET_HANDLERS)
     active_handlers = TopicHandlerRegistry.get_active_handlers()
 
     # rosbag を csv に変換して書き出す
-    # (すでに csv が存在する場合は何もしない)
-    convert_bag_to_csv(INPUT_BAG_DIRECTORY, active_handlers)
+    # (overwrite == Falseの場合は、すでに csv が存在する場合は何もしない)
+    convert_bag_to_csv(args.input_bag_directory, active_handlers, args.overwrite)
 
     # 書き出したcsvを読み込み、dataframeに格納する
-    dataframes = load_csv(INPUT_BAG_DIRECTORY, active_handlers)
+    dataframes = load_csv(args.input_bag_directory, active_handlers)
 
     # dataframes を最も長い時系列を持つデータの時刻を基準に補間して1つのdataframeにまとめる
     df = interpolate_dataframes(dataframes)
 
-    # ジャイロオドメトリを計算してdataframeに追加
-    compute_gyro_odometry(df)
-
-    # EKFローカリゼーションの位置を基準にジャイロオドメトリを補正する
-    # reset_localization_indicesはEKFローカリゼーションの位置を基準にジャイロオドメトリを補正するためのリセットポイントのインデックス
-    reset_localization_indices = []
-    # reset_localization_indices = [3000, 4600, 6000, 7300, 9100]
-    # reset_localization_indices = [3000, 4600, 6000, 9100]
-    reset_points = compensate_gyro_odometry_by_ekf_localization(
-        df, reset_localization_indices
-    )
-
     # プロット
     fig, ax = plt.subplots(1, 1, figsize=(16, 10))
-    plot_map_in_world(ax, load_occupancy_grid_map(OCCUPANCY_GRID_MAP_YAML_PATH))
-    plot_reference_path(ax, load_reference_path(REFERENCE_PATH_CSV_PATH))
+
+    if args.map_yaml_path != "":
+        plot_map_in_world(ax, load_occupancy_grid_map(args.map_yaml_path))
+    if args.reference_path_csv_path != "":
+        plot_reference_path(ax, load_reference_path(args.reference_path_csv_path))
+
     plot_trajectory(
         ax,
         dataframes,
         df,
-        reset_points,
         # t0=0,
         # t1=14000,
         # tg=1200,
@@ -95,13 +116,9 @@ def main():
         plot_velocity_text=True,
     )
 
-    ax.legend()
-    ax.grid()
-    plt.gca().set_aspect("equal", adjustable="box")
-    
-    if SAVE_PLOT:
+    if args.save_plot:
         # save the plot as a png file
-        bag_name = INPUT_BAG_DIRECTORY.name
+        bag_name = Path(args.input_bag_directory).name
         save_path = "/aichallenge/workspace/png/" + bag_name + ".png"
         print("save_path: ", save_path)
         plt.savefig(save_path)

@@ -1,5 +1,9 @@
 from aic_tools.common import map_to_world, lowpass_filter, m_per_sec_to_kmh
 from aic_tools.topic_handler import GnssPoseHandler
+from aic_tools.data_processor import (
+    compute_gyro_odometry,
+    compensate_gyro_odometry_by_ekf_localization,
+)
 
 import numpy as np
 
@@ -42,7 +46,6 @@ def plot_trajectory(
     ax,
     dataframes,
     df,
-    reset_points,
     t0=None,
     t1=None,
     tg=None,
@@ -60,7 +63,28 @@ def plot_trajectory(
     ax.plot(df.ekf_x[t0:t1], df.ekf_y[t0:t1], label="ekf")
 
     if plot_gyro_odom:
+        # ジャイロオドメトリを計算してdataframeに追加
+        compute_gyro_odometry(df)
+
+        # EKFローカリゼーションの位置を基準にジャイロオドメトリを補正する
+        # reset_localization_indicesはEKFローカリゼーションの位置を基準にジャイロオドメトリを補正するためのリセットポイントのインデックス
+        reset_localization_indices = []
+        # reset_localization_indices = [3000, 4600, 6000, 7300, 9100]
+        # reset_localization_indices = [3000, 4600, 6000, 9100]
+        reset_points = compensate_gyro_odometry_by_ekf_localization(
+            df, reset_localization_indices
+        )
+
         ax.plot(df.gyro_odom_x[t0:t1], df.gyro_odom_y[t0:t1], label="gyro odom")
+
+        if len(reset_points) > 0:
+            ax.plot(
+                [p[1] for p in reset_points],
+                [p[2] for p in reset_points],
+                "*",
+                markersize=5.0,
+                label="reset point",
+            )
 
     if plot_gnss:
         # ax.plot(df.gnss_x[t0:t1], df.gnss_y[t0:t1], 'o', markersize=1.0, label="gnss")
@@ -75,15 +99,6 @@ def plot_trajectory(
             "o",
             markersize=2.0,
             label="gnss",
-        )
-
-    if len(reset_points) > 0:
-        ax.plot(
-            [p[1] for p in reset_points],
-            [p[2] for p in reset_points],
-            "*",
-            markersize=5.0,
-            label="reset point",
         )
 
     if plot_orientation:
@@ -124,6 +139,10 @@ def plot_trajectory(
                 fontsize=6,
                 color="blue",
             )
+
+    ax.legend()
+    ax.grid()
+    plt.gca().set_aspect("equal", adjustable="box")
 
 
 def plot_velocity_acceleration(dataframes, df):
