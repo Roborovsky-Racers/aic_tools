@@ -27,6 +27,7 @@ install(PROGRAMS
   scripts/analyze_bag.py
   scripts/analyze_bag.bash
   scripts/auto_mode_period_marker.py
+  scripts/velocity_heat_odom_visualizer
   DESTINATION lib/${PROJECT_NAME}
 )
 
