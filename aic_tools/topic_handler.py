@@ -66,7 +66,6 @@ class TopicHandler(ABC):
         data["stamp"] = timestamp
         return data
 
-
 class LocalizationHandler(TopicHandler):
     TOPIC_NAME = "/localization/kinematic_state"
 
@@ -114,4 +113,24 @@ class GnssPoseHandler(TopicHandler):
         return {
             "gnss_x": msg.pose.position.x,
             "gnss_y": msg.pose.position.y,
+        }
+
+class AckermannCommandHandler(TopicHandler):
+    TOPIC_NAME = "/control/command/control_cmd"
+
+    def extract_data(self, msg):
+        return {
+            "steering_tire_angle_command": msg.lateral.steering_tire_angle,
+            "speed_command": msg.longitudinal.speed,
+            "acceleration_command": msg.longitudinal.acceleration,
+        }
+
+class ActuationCommandHandler(TopicHandler):
+    TOPIC_NAME = "/control/command/actuation_cmd"
+
+    def extract_data(self, msg):
+        return {
+          "actuation_accel_cmd": msg.actuation.accel_cmd,
+          "actuation_brake_cmd": msg.actuation.brake_cmd,
+          "actuation_steer_cmd": msg.actuation.steer_cmd,
         }

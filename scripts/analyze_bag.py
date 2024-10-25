@@ -13,6 +13,8 @@ from aic_tools.topic_handler import (
     SteeringStatusHandler,
     ImuDataHandler,
     GnssPoseHandler,
+    AckermannCommandHandler,
+    ActuationCommandHandler,
 )
 from aic_tools.rosbag_converter import convert_bag_to_csv, load_csv
 from aic_tools.config_loader import try_load_mpc_config
@@ -25,6 +27,7 @@ from aic_tools.data_plotter import (
     plot_reference_path,
     plot_trajectory,
     plot_velocity_acceleration,
+    plot_steer,
 )
 
 
@@ -79,6 +82,8 @@ def main(argv=sys.argv):
         SteeringStatusHandler,
         ImuDataHandler,
         GnssPoseHandler,
+        AckermannCommandHandler,
+        ActuationCommandHandler,
     ]
 
     # 指定された HANDLERS をアクティブにする
@@ -107,9 +112,8 @@ def main(argv=sys.argv):
         ax,
         dataframes,
         df,
-        # t0=0,
-        # t1=14000,
-        # tg=1200,
+        # t_start=0.0,
+        # t_end=70.0,
         plot_gyro_odom=False,
         plot_gnss=True,
         plot_orientation=False,
@@ -126,6 +130,7 @@ def main(argv=sys.argv):
         plt.show()
 
     # plot_velocity_acceleration(dataframes, df)
+    # plot_steer(df)
 
     rclpy.shutdown()
 

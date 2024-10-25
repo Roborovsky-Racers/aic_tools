@@ -46,18 +46,21 @@ def plot_trajectory(
     ax,
     dataframes,
     df,
-    t0=None,
-    t1=None,
-    tg=None,
+    t_start=0.0,
+    t_end=None,
     plot_gyro_odom=False,
     plot_gnss=False,
     plot_orientation=False,
     plot_velocity_text=False,
+    quiver_skip_duration = 1.0,
+    velocity_skip_duration = 1.0,
 ):
-    if t0 is None:
-        t0 = 0
-    if t1 is None:
-        t1 = len(df.stamp)
+    ave_dt = df.stamp.diff().mean()
+
+    t0 = df[df.stamp >= t_start].index[0]
+    t1 = len(df.stamp)
+    if t_end is not None:
+        t1 = df[df.stamp <= t_end].index[-1]
 
     # 軌跡をプロット
     ax.plot(df.ekf_x[t0:t1], df.ekf_y[t0:t1], label="ekf")
@@ -89,13 +92,16 @@ def plot_trajectory(
     if plot_gnss:
         # ax.plot(df.gnss_x[t0:t1], df.gnss_y[t0:t1], 'o', markersize=1.0, label="gnss")
         gnss_df = dataframes[GnssPoseHandler.TOPIC_NAME]  # 補間前のGNSSデータ
+        gnss_df.stamp = (gnss_df.stamp - gnss_df.stamp[0]) / 1e9
 
-        if tg is None:
-            tg = len(gnss_df.stamp)
+        tg0 = gnss_df[gnss_df.stamp >= t_start].index[0]
+        tg1 = len(gnss_df.stamp)
+        if t_end is not None:
+            tg1 = gnss_df[gnss_df.stamp <= t_end].index[-1]
 
         ax.plot(
-            gnss_df.gnss_x[0:tg],
-            gnss_df.gnss_y[0:tg],
+            gnss_df.gnss_x[tg0:tg1],
+            gnss_df.gnss_y[tg0:tg1],
             "o",
             markersize=2.0,
             label="gnss",
@@ -103,12 +109,12 @@ def plot_trajectory(
 
     if plot_orientation:
         # 矢印で姿勢を表示 (ekf)
-        skip = 50  # 矢印を飛ばしながら描画するためのステップサイズ
+        quiver_skip = int(quiver_skip_duration / ave_dt)
         ax.quiver(
-            df.ekf_x[t0:t1:skip],
-            df.ekf_y[t0:t1:skip],
-            np.cos(df.ekf_yaw[t0:t1:skip]),
-            np.sin(df.ekf_yaw[t0:t1:skip]),
+            df.ekf_x[t0:t1:quiver_skip],
+            df.ekf_y[t0:t1:quiver_skip],
+            np.cos(df.ekf_yaw[t0:t1:quiver_skip]),
+            np.sin(df.ekf_yaw[t0:t1:quiver_skip]),
             angles="xy",
             scale_units="xy",
             scale=1,
@@ -117,21 +123,22 @@ def plot_trajectory(
         )
 
         # 矢印で姿勢を表示 (gyro odom)
-        ax.quiver(
-            df.gyro_odom_x[t0:t1:skip],
-            df.gyro_odom_y[t0:t1:skip],
-            np.cos(df.gyro_odom_yaw[t0:t1:skip]),
-            np.sin(df.gyro_odom_yaw[t0:t1:skip]),
-            angles="xy",
-            scale_units="xy",
-            scale=1,
-            color="red",
-            label="gyro odom yaw",
-        )
+        if plot_gyro_odom:
+            ax.quiver(
+                df.gyro_odom_x[t0:t1:quiver_skip],
+                df.gyro_odom_y[t0:t1:quiver_skip],
+                np.cos(df.gyro_odom_yaw[t0:t1:quiver_skip]),
+                np.sin(df.gyro_odom_yaw[t0:t1:quiver_skip]),
+                angles="xy",
+                scale_units="xy",
+                scale=1,
+                color="red",
+                label="gyro odom yaw",
+            )
 
     if plot_velocity_text:
-        skip = 100
-        for i in range(t0, t1, skip):
+        velocity_skip = int(velocity_skip_duration / ave_dt)
+        for i in range(t0, t1, velocity_skip):
             ax.text(
                 df.ekf_x[i],
                 df.ekf_y[i],
@@ -172,4 +179,21 @@ def plot_velocity_acceleration(dataframes, df):
     ax[1].yaxis.set_minor_locator(ticker.MultipleLocator(0.25))
     ax[1].grid(True, which="both")
 
+    plt.show()
+
+def plot_steer(df, T=None):
+    if T is None:
+        T=len(df.stamp)
+
+    fig, ax = plt.subplots(1, 1, figsize=(16, 10))
+    ax.plot(df.stamp[0:T], df.steering_tire_angle_command[0:T], label="steer_cmd")
+    # ax.plot(df.stamp[0:T], df.actuation_steer_cmd[0:T], label="actuator_steer_cmd")
+    ax.plot(df.stamp[0:T], df.steer[0:T], label="steer")
+    # ax.plot(df.stamp, df.steer * 1.639, label="steer * 1.639")
+    # ax.plot(df.stamp[0:T], df.steer[0:T] / 1.639, label="steer / 1.639")
+    ax.set_ylim([-0.6, 0.6])
+    ax.legend()
+    ax.grid()
+    # plt.savefig("sim_steer.png")
+    # plt.savefig("real_steer.png")
     plt.show()
