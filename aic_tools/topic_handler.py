@@ -58,13 +58,14 @@ class TopicHandler(ABC):
 
     @classmethod
     def get_under_scored_topic_name(cls):
-        return '_'.join(cls.TOPIC_NAME.strip('/').split('/'))
+        return "_".join(cls.TOPIC_NAME.strip("/").split("/"))
 
     def process_message(self, msg, timestamp):
         # 共通で timestamp を含める
         data = self.extract_data(msg)
         data["stamp"] = timestamp
         return data
+
 
 class LocalizationHandler(TopicHandler):
     TOPIC_NAME = "/localization/kinematic_state"
@@ -82,6 +83,16 @@ class LocalizationHandler(TopicHandler):
             "ekf_x": msg.pose.pose.position.x,
             "ekf_y": msg.pose.pose.position.y,
             "ekf_yaw": e[2],
+        }
+
+
+class LocalizationAccelerationHandler(TopicHandler):
+    TOPIC_NAME = "/localization/acceleration"
+
+    def extract_data(self, msg):
+        return {
+            "loc_acc_x": msg.accel.accel.linear.x,
+            "loc_acc_y": msg.accel.accel.linear.y,
         }
 
 
@@ -113,7 +124,9 @@ class GnssPoseHandler(TopicHandler):
         return {
             "gnss_x": msg.pose.position.x,
             "gnss_y": msg.pose.position.y,
+            "gnss_z": msg.pose.position.z,
         }
+
 
 class AckermannCommandHandler(TopicHandler):
     TOPIC_NAME = "/control/command/control_cmd"
@@ -125,12 +138,13 @@ class AckermannCommandHandler(TopicHandler):
             "acceleration_command": msg.longitudinal.acceleration,
         }
 
+
 class ActuationCommandHandler(TopicHandler):
     TOPIC_NAME = "/control/command/actuation_cmd"
 
     def extract_data(self, msg):
         return {
-          "actuation_accel_cmd": msg.actuation.accel_cmd,
-          "actuation_brake_cmd": msg.actuation.brake_cmd,
-          "actuation_steer_cmd": msg.actuation.steer_cmd,
+            "actuation_accel_cmd": msg.actuation.accel_cmd,
+            "actuation_brake_cmd": msg.actuation.brake_cmd,
+            "actuation_steer_cmd": msg.actuation.steer_cmd,
         }

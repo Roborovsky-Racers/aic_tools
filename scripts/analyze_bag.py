@@ -9,6 +9,7 @@ import rclpy
 from aic_tools.topic_handler import (
     TopicHandlerRegistry,
     LocalizationHandler,
+    LocalizationAccelerationHandler,
     VelocityStatusHandler,
     SteeringStatusHandler,
     ImuDataHandler,
@@ -18,16 +19,18 @@ from aic_tools.topic_handler import (
 )
 from aic_tools.rosbag_converter import convert_bag_to_csv, load_csv
 from aic_tools.config_loader import try_load_mpc_config
-from aic_tools.data_loader import load_reference_path, load_occupancy_grid_map
 from aic_tools.data_processor import (
     interpolate_dataframes,
 )
 from aic_tools.data_plotter import (
+    set_save_base_name,
+    save_plot,
     plot_map_in_world,
     plot_reference_path,
     plot_trajectory,
     plot_velocity_acceleration,
     plot_steer,
+    plot_gnss_covariance,
 )
 
 
@@ -76,14 +79,18 @@ def main(argv=sys.argv):
     args_without_ros = rclpy.utilities.remove_ros_args(argv)  # type: ignore
     args = parse_args(args_without_ros[1:])
 
+    bag_name = Path(args.input_bag_directory).name
+    set_save_base_name("/aichallenge/workspace/png/" + bag_name)
+
     TARGET_HANDLERS = [
-        LocalizationHandler,
-        VelocityStatusHandler,
-        SteeringStatusHandler,
-        ImuDataHandler,
+        # LocalizationHandler,
+        # LocalizationAccelerationHandler,
+        # VelocityStatusHandler,
+        # SteeringStatusHandler,
+        # ImuDataHandler,
         GnssPoseHandler,
-        AckermannCommandHandler,
-        ActuationCommandHandler,
+        # AckermannCommandHandler,
+        # ActuationCommandHandler,
     ]
 
     # 指定された HANDLERS をアクティブにする
@@ -100,37 +107,29 @@ def main(argv=sys.argv):
     # dataframes を最も長い時系列を持つデータの時刻を基準に補間して1つのdataframeにまとめる
     df = interpolate_dataframes(dataframes)
 
-    # プロット
-    fig, ax = plt.subplots(1, 1, figsize=(16, 10))
-
-    if args.map_yaml_path != "":
-        plot_map_in_world(ax, load_occupancy_grid_map(args.map_yaml_path))
-    if args.reference_path_csv_path != "":
-        plot_reference_path(ax, load_reference_path(args.reference_path_csv_path))
-
     plot_trajectory(
-        ax,
         dataframes,
         df,
         # t_start=0.0,
-        # t_end=70.0,
+        # t_end=50.0,
         plot_gyro_odom=False,
         plot_gnss=True,
         plot_orientation=False,
         plot_velocity_text=True,
+        map_yaml_path=args.map_yaml_path,
+        reference_path_csv_path=args.reference_path_csv_path,
+        save=args.save_plot,
     )
 
-    if args.save_plot:
-        # save the plot as a png file
-        bag_name = Path(args.input_bag_directory).name
-        save_path = "/aichallenge/workspace/png/" + bag_name + ".png"
-        print("save_path: ", save_path)
-        plt.savefig(save_path)
-    else:
-        plt.show()
+    # plot_velocity_acceleration(dataframes, df, save=args.save_plot)
+    # plot_velocity_acceleration(dataframes, df, t_start=10, t_end=14, plot_acc=False, save=args.save_plot)
+    # plot_velocity_acceleration(dataframes, df, t_start=115, t_end=120, plot_acc=False, save=args.save_plot)
 
-    # plot_velocity_acceleration(dataframes, df)
-    # plot_steer(df)
+    # plot_steer(df, save=args.save_plot)
+    # plot_steer(df, t_start=10, t_end=12, save=args.save_plot)
+
+    # plot_gnss_covariance(dataframes, save=args.save_plot)
+    # plot_gnss_covariance(dataframes, t_start=1470, t_end=1630, save=args.save_plot)
 
     rclpy.shutdown()
 
