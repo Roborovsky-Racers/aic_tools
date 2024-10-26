@@ -83,14 +83,14 @@ def main(argv=sys.argv):
     set_save_base_name("/aichallenge/workspace/png/" + bag_name)
 
     TARGET_HANDLERS = [
-        # LocalizationHandler,
-        # LocalizationAccelerationHandler,
-        # VelocityStatusHandler,
-        # SteeringStatusHandler,
-        # ImuDataHandler,
+        LocalizationHandler,
+        LocalizationAccelerationHandler,
+        VelocityStatusHandler,
+        SteeringStatusHandler,
+        ImuDataHandler,
         GnssPoseHandler,
-        # AckermannCommandHandler,
-        # ActuationCommandHandler,
+        AckermannCommandHandler,
+        ActuationCommandHandler,
     ]
 
     # 指定された HANDLERS をアクティブにする
