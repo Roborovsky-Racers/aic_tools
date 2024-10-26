@@ -269,7 +269,7 @@ def plot_velocity_acceleration(
 
     if plot_acc:
         ax[1].plot(df.stamp[t0 + 1 : t1], acc_x, label="acc_x")
-        ax[1].plot(df.stamp[t0:t1], df.loc_acc_x, label="loc_acc_x")
+        ax[1].plot(df.stamp[t0:t1], df.loc_acc_x[t0:t1], label="loc_acc_x")
         ax[1].legend()
         ax[1].yaxis.set_major_locator(ticker.MultipleLocator(1.0))
         # ax[1].yaxis.set_minor_locator(ticker.MultipleLocator(0.25))
