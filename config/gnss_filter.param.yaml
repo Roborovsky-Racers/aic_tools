@@ -1,0 +1,6 @@
+/**:
+  ros__parameters:
+    gnss_queue_size: 3
+    ekf_keep_duration: 1.0
+    outlier_threshold: 0.7
+    enable_outlier_detection: true

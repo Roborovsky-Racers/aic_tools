@@ -16,6 +16,10 @@ include(GNUInstallDirs)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
+ament_auto_add_executable(gnss_filter
+  src/gnss_filter.cpp
+)
+
 ament_python_install_package(${PROJECT_NAME}
   SCRIPTS_DESTINATION lib/${PROJECT_NAME}
 )
@@ -51,5 +55,7 @@ if(install_result)
 endif()
 
 ament_auto_package(INSTALL_TO_SHARE
+  config
+  launch
   resources
 )
