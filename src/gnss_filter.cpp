@@ -23,6 +23,8 @@ public:
     ekf_keep_duration_ = declare_parameter<double>("ekf_keep_duration");
     gnss_delay_sec_ = declare_parameter<double>("gnss_delay_sec");
     outlier_threshold_ = declare_parameter<double>("outlier_threshold");
+    enable_duplicate_detection_ =
+        declare_parameter<bool>("enable_duplicate_detection");
     enable_outlier_detection_ =
         declare_parameter<bool>("enable_outlier_detection");
 
@@ -81,6 +83,10 @@ private:
   }
 
   bool is_duplicate(const PoseWithCovarianceStamped &msg) {
+    if(enable_duplicate_detection_) {
+      return false;
+    }
+
     for (const auto &p : gnss_queue_) {
       if (is_duplicate(p, msg)) {
         return true;
@@ -171,6 +177,7 @@ private:
   double ekf_keep_duration_;
   double outlier_threshold_;
   double gnss_delay_sec_;
+  bool enable_duplicate_detection_;
   bool enable_outlier_detection_;
 };
 
