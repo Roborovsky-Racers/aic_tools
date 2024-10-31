@@ -4,6 +4,8 @@
 #include "std_msgs/msg/float64.hpp"
 
 #include "rclcpp/logging.hpp"
+#include <angles/angles.h>
+#include <tier4_autoware_utils/geometry/geometry.hpp>
 #include <cmath>
 #include <deque>
 
@@ -34,6 +36,10 @@ public:
         rclcpp::QoS(rclcpp::KeepLast(10)).reliable());
     pub_distance_ = this->create_publisher<Float64>(
         "~/distance_from_ekf", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
+    pub_yaw_ = this->create_publisher<Float64>(
+        "~/gnss_yaw", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
+    pub_yaw_diff_ = this->create_publisher<Float64>(
+        "~/gnss_yaw_diff", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
 
     sub_gnss_ = this->create_subscription<PoseWithCovarianceStamped>(
         "/sensing/gnss/pose_with_covariance",
@@ -96,6 +102,28 @@ private:
   }
 
   bool is_outlier(const PoseWithCovarianceStamped &msg) {
+    if(ekf_odom_queue_.empty()) {
+      return false;
+    }
+
+    const double yaw = tier4_autoware_utils::getRPY(msg.pose.pose.orientation).z;
+    const double yaw_diff = angles::shortest_angular_distance(last_yaw_, yaw);
+    const double continuouse_yaw = last_yaw_ + yaw_diff;
+    last_yaw_ = yaw;
+
+    const double ekf_yaw = tier4_autoware_utils::getRPY(ekf_odom_queue_.back().pose.pose.orientation).z;
+    const double ekf_yaw_diff = angles::shortest_angular_distance(last_ekf_yaw_, ekf_yaw);
+    const double continuouse_ekf_yaw = last_ekf_yaw_ + ekf_yaw_diff;
+    last_ekf_yaw_ = ekf_yaw;
+
+    Float64 yaw_msg;
+    yaw_msg.data = yaw;
+    pub_yaw_->publish(yaw_msg);
+
+    // yaw_msg.data = yaw_diff;
+    yaw_msg.data = continuouse_yaw - continuouse_ekf_yaw;
+    pub_yaw_diff_->publish(yaw_msg);
+
     if (!enable_outlier_detection_) {
       return false;
     }
@@ -165,6 +193,7 @@ private:
 
   rclcpp::Publisher<PoseWithCovarianceStamped>::SharedPtr pub_gnss_;
   rclcpp::Publisher<Float64>::SharedPtr pub_distance_;
+  rclcpp::Publisher<Float64>::SharedPtr pub_yaw_, pub_yaw_diff_;
 
   rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr sub_gnss_;
   rclcpp::Subscription<Odometry>::SharedPtr sub_ekf_odom_;
@@ -179,6 +208,10 @@ private:
   double gnss_delay_sec_;
   bool enable_duplicate_detection_;
   bool enable_outlier_detection_;
+
+  // runtime states
+  double last_yaw_ = 0.0;
+  double last_ekf_yaw_ = 0.0;
 };
 
 } // namespace aic_tools
