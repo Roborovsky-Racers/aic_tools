@@ -118,13 +118,13 @@ class ImuDataHandler(TopicHandler):
 
 
 class GnssPoseHandler(TopicHandler):
-    TOPIC_NAME = "/sensing/gnss/pose"
+    TOPIC_NAME = "/sensing/gnss/pose_with_covariance"
 
     def extract_data(self, msg):
         return {
-            "gnss_x": msg.pose.position.x,
-            "gnss_y": msg.pose.position.y,
-            "gnss_z": msg.pose.position.z,
+            "gnss_x": msg.pose.pose.position.x,
+            "gnss_y": msg.pose.pose.position.y,
+            "gnss_z": msg.pose.pose.position.z,
         }
 
 
