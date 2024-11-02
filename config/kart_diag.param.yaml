@@ -1,0 +1,14 @@
+/**:
+  ros__parameters:
+    gnss_queue_size: 3
+    ekf_keep_duration: 1.0
+    outlier_threshold: 2.5
+    enable_outlier_detection: true
+
+    # GNSS duplicate detection
+    enable_duplicate_detection: true
+    alert_gnss_duplicate_count: 5
+
+    #GNSS discontinuation detection
+    alert_gnss_discontinuation_sec: 0.5
+

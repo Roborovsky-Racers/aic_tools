@@ -3,7 +3,7 @@ project(aic_tools)
 
 # Default to C++23
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD 23)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
@@ -16,8 +16,16 @@ include(GNUInstallDirs)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
+ament_auto_add_library(${PROJECT_NAME} SHARED
+  src/gnss_filter.cpp
+)
+
 ament_auto_add_executable(gnss_filter
   src/gnss_filter.cpp
+)
+
+ament_auto_add_executable(kart_diag
+  src/kart_diag.cpp
 )
 
 ament_python_install_package(${PROJECT_NAME}
@@ -58,4 +66,5 @@ ament_auto_package(INSTALL_TO_SHARE
   config
   launch
   resources
+  include
 )

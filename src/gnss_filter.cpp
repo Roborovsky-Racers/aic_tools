@@ -1,24 +1,21 @@
-#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
-#include "nav_msgs/msg/odometry.hpp"
-#include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/float64.hpp"
+#include "aic_tools/gnss_filter.hpp"
 
 #include "rclcpp/logging.hpp"
 #include <angles/angles.h>
 #include <tier4_autoware_utils/geometry/geometry.hpp>
 #include <cmath>
-#include <deque>
 
 namespace aic_tools {
 
-class GnssFilter : public rclcpp::Node {
-public:
-  using Float64 = std_msgs::msg::Float64;
-  using PoseWithCovarianceStamped =
-      geometry_msgs::msg::PoseWithCovarianceStamped;
-  using Odometry = nav_msgs::msg::Odometry;
+  GnssFilter::GnssFilter() : Node("gnss_filter") {
+    init();
+  }
 
-  GnssFilter() : Node("gnss_filter") {
+  GnssFilter::GnssFilter(const std::string & node_name) : Node(node_name) {
+    init();
+  }
+
+  void GnssFilter::init() {
     // load parameters
     gnss_queue_size_ =
         static_cast<size_t>(declare_parameter<int64_t>("gnss_queue_size"));
@@ -52,8 +49,7 @@ public:
         std::bind(&GnssFilter::ekf_odom_callback, this, std::placeholders::_1));
   }
 
-private:
-  void gnss_callback(const PoseWithCovarianceStamped::SharedPtr msg) {
+  void GnssFilter::gnss_callback(const PoseWithCovarianceStamped::SharedPtr msg) {
     // drop duplicate message
     if (is_duplicate(*msg)) {
       RCLCPP_DEBUG(get_logger(), "Dropped duplicate message");
@@ -77,19 +73,19 @@ private:
     RCLCPP_DEBUG(get_logger(), "Published filtered message");
   }
 
-  void ekf_odom_callback(const Odometry::SharedPtr msg) {
+  void GnssFilter::ekf_odom_callback(const Odometry::SharedPtr msg) {
     ekf_odom_queue_.push_back(*msg);
   }
 
-  bool is_duplicate(const PoseWithCovarianceStamped &p0,
+  bool GnssFilter::is_duplicate(const PoseWithCovarianceStamped &p0,
                     const PoseWithCovarianceStamped &p1) {
     return p0.pose.pose.position.x == p1.pose.pose.position.x &&
            p0.pose.pose.position.y == p1.pose.pose.position.y &&
            p0.pose.pose.position.z == p1.pose.pose.position.z;
   }
 
-  bool is_duplicate(const PoseWithCovarianceStamped &msg) {
-    if(enable_duplicate_detection_) {
+  bool GnssFilter::is_duplicate(const PoseWithCovarianceStamped &msg) {
+    if(!enable_duplicate_detection_) {
       return false;
     }
 
@@ -101,7 +97,7 @@ private:
     return false;
   }
 
-  bool is_outlier(const PoseWithCovarianceStamped &msg) {
+  bool GnssFilter::is_outlier(const PoseWithCovarianceStamped &msg) {
     if(ekf_odom_queue_.empty()) {
       return false;
     }
@@ -191,28 +187,6 @@ private:
     return true;
   }
 
-  rclcpp::Publisher<PoseWithCovarianceStamped>::SharedPtr pub_gnss_;
-  rclcpp::Publisher<Float64>::SharedPtr pub_distance_;
-  rclcpp::Publisher<Float64>::SharedPtr pub_yaw_, pub_yaw_diff_;
-
-  rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr sub_gnss_;
-  rclcpp::Subscription<Odometry>::SharedPtr sub_ekf_odom_;
-
-  std::deque<PoseWithCovarianceStamped> gnss_queue_;
-  std::deque<Odometry> ekf_odom_queue_;
-
-  // parameters
-  size_t gnss_queue_size_;
-  double ekf_keep_duration_;
-  double outlier_threshold_;
-  double gnss_delay_sec_;
-  bool enable_duplicate_detection_;
-  bool enable_outlier_detection_;
-
-  // runtime states
-  double last_yaw_ = 0.0;
-  double last_ekf_yaw_ = 0.0;
-};
 
 } // namespace aic_tools
 
