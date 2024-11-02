@@ -1,5 +1,8 @@
 from aic_tools.common import map_to_world, lowpass_filter, m_per_sec_to_kmh
-from aic_tools.topic_handler import GnssPoseHandler
+from aic_tools.topic_handler import (
+    GnssPoseHandler,
+    LocalizationHandler,
+)
 from aic_tools.data_loader import load_reference_path, load_occupancy_grid_map
 from aic_tools.data_processor import (
     compute_gyro_odometry,
@@ -254,9 +257,10 @@ def plot_velocity_acceleration(
     ax[0].plot(df.stamp[t0:t1], df.vx[t0:t1], label="vx")
     # ax[0].plot(df.stamp, df.gyro_z, label="gyro_z")
     ax[0].plot(df.stamp[t0:t1], df.acceleration_command[t0:t1], label="accel cmd")
-    ax[0].plot(df.stamp[t0:t1], df.actuation_accel_cmd[t0:t1], label="accel pedal")
-    ax[0].plot(df.stamp[t0:t1], -df.actuation_brake_cmd[t0:t1], label="brake_pedal")
+    # ax[0].plot(df.stamp[t0:t1], df.actuation_accel_cmd[t0:t1], label="accel pedal")
+    # ax[0].plot(df.stamp[t0:t1], -df.actuation_brake_cmd[t0:t1], label="brake_pedal")
     # ax[0].plot(df.stamp[t0:t1], df.steer[t0:t1], label="steer")
+    ax[0].set_ylim([-2.0, 10.0])
     ax[0].legend()
     ax[0].xaxis.set_major_locator(ticker.MultipleLocator(10.0))
     # ax[0].xaxis.set_minor_locator(ticker.MultipleLocator(2.0))
@@ -340,5 +344,39 @@ def plot_gnss_covariance(dataframes, t_start=None, t_end=None, save=False):
 
     plt.show()
     save_plot(fig, f"gnss_covariance_{t0}_{t1}", save)
+    plt.clf()
+    plt.close()
+
+
+def plot_gnss_and_ekf_with_phase_diff(dataframes, phase_diff=0.0, t_start=None, t_end=None, save=False):
+
+    gnss_df = dataframes[GnssPoseHandler.TOPIC_NAME]
+    gnss_df.stamp = (gnss_df.stamp - gnss_df.stamp[0]) / 1e9
+
+    gnss_x = gnss_df.gnss_x.drop_duplicates()
+    gnss_stamp = gnss_df.stamp[gnss_x.index]
+    vel_gnss_x = gnss_x.diff() / gnss_stamp.diff()
+
+    ekf_df = dataframes[LocalizationHandler.TOPIC_NAME]
+    ekf_df.stamp = (ekf_df.stamp - ekf_df.stamp[0]) / 1e9
+    vel_ekf_x = ekf_df.ekf_x.diff() / ekf_df.stamp.diff()
+
+    t0, t1 = get_index_from_time(ekf_df, t_start, t_end)
+
+    fig, ax = plt.subplots(1, 1, figsize=(16, 10))
+
+    # ax.plot(ekf_df.stamp[t0:t1], vel_ekf_x[t0:t1], label="ekf")
+    ax.plot(ekf_df.stamp[t0:t1], ekf_df.ekf_x[t0:t1], label="ekf")
+
+    gnss_df.stamp = gnss_df.stamp[gnss_x.index].reset_index(drop=True)
+    t0, t1 = get_index_from_time(gnss_df, t_start, t_end)
+    gnss_df.stamp = gnss_df.stamp - phase_diff
+    # ax.plot(gnss_df.stamp[t0:t1], vel_gnss_x[t0:t1], label="gnss")
+    ax.plot(gnss_df.stamp[t0:t1], gnss_x[t0:t1], label="gnss")
+
+    plt.grid()
+    plt.legend()
+    plt.show()
+    save_plot(fig, f"gnss_and_ekf_with_phase_diff_{t0}_{t1}_phase_diff_{phase_diff}", save)
     plt.clf()
     plt.close()

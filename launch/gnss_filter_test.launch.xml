@@ -55,6 +55,7 @@
       <arg name="extend_state_step" value="100"/>
     </include>
 
+    <!-- trigger to enable ekf_localizer -->
     <executable
       cmd="/localization_test/trigger_node std_srvs/srv/SetBool '{data: true}'"
       cwd="/home"

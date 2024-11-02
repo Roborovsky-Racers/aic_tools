@@ -31,6 +31,7 @@ from aic_tools.data_plotter import (
     plot_velocity_acceleration,
     plot_steer,
     plot_gnss_covariance,
+    plot_gnss_and_ekf_with_phase_diff,
 )
 
 
@@ -121,12 +122,11 @@ def main(argv=sys.argv):
         save=args.save_plot,
     )
 
-    # plot_velocity_acceleration(dataframes, df, save=args.save_plot)
-    # plot_velocity_acceleration(dataframes, df, t_start=10, t_end=14, plot_acc=False, save=args.save_plot)
-    # plot_velocity_acceleration(dataframes, df, t_start=115, t_end=120, plot_acc=False, save=args.save_plot)
+    plot_velocity_acceleration(dataframes, df, plot_acc=True, save=args.save_plot)
 
-    # plot_steer(df, save=args.save_plot)
-    # plot_steer(df, t_start=10, t_end=12, save=args.save_plot)
+    plot_steer(df, save=args.save_plot)
+
+    # plot_gnss_and_ekf_with_phase_diff(dataframes, phase_diff=0.5, t_start=0.0, t_end=50.0, save=args.save_plot)
 
     # plot_gnss_covariance(dataframes, save=args.save_plot)
     # plot_gnss_covariance(dataframes, t_start=1470, t_end=1630, save=args.save_plot)

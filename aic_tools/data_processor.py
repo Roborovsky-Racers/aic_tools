@@ -26,7 +26,7 @@ def interpolate_dataframes(dataframes: dict):
                     original_stamps,
                     df[column].values,
                     bounds_error=False,
-                    fill_value="extrapolate",
+                    fill_value=np.nan,
                 )
                 # 補間を実行し、基準のstampに合わせる
                 interpolated_df[column] = f(reference_stamps)
