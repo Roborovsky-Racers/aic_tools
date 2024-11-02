@@ -40,7 +40,10 @@ void KartDiag::gnss_callback(const PoseWithCovarianceStamped::SharedPtr msg) {
   }
   gnss_queue_.push_back(*msg);
 
-  is_outlier(*msg);
+  if (is_outlier(*msg))
+  {
+    RCLCPP_WARN(get_logger(), "GNSS outlier detected");
+  }
 
 }
 
