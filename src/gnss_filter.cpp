@@ -89,7 +89,7 @@ private:
   }
 
   bool is_duplicate(const PoseWithCovarianceStamped &msg) {
-    if(enable_duplicate_detection_) {
+    if(!enable_duplicate_detection_) {
       return false;
     }
 
