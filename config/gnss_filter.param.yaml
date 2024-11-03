@@ -3,5 +3,6 @@
     gnss_queue_size: 3
     ekf_keep_duration: 1.0
     outlier_threshold: 2.5
+    too_large_cov_threshold: 0.025
     enable_duplicate_detection: true
     enable_outlier_detection: true
