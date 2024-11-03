@@ -2,9 +2,17 @@
 <launch>
   <arg name="gnss_delay" default="0.5"/>
 
-  <node pkg="aic_tools" exec="kart_diag" name="gnss_filter" output="both" args="--ros-args --log-level gnss_filter:=info">
-    <param from="$(find-pkg-share aic_tools)/config/kart_diag.param.yaml"/>
-    <param name="gnss_delay_sec" value="$(var gnss_delay)"/>
-  </node>
+  <group>
+    <node pkg="aic_tools" exec="gnss_filter" name="gnss_filter" output="both" args="--ros-args --log-level gnss_filter:=fatal">
+      <param from="$(find-pkg-share aic_tools)/config/kart_diag.param.yaml"/>
+      <param name="gnss_delay_sec" value="$(var gnss_delay)"/>
+    </node>
+
+    <node pkg="aic_tools" exec="kart_diag" name="kart_diag" output="both" args="--ros-args --log-level gnss_filter:=info">
+      <param from="$(find-pkg-share aic_tools)/config/kart_diag.param.yaml"/>
+      <param name="gnss_delay_sec" value="$(var gnss_delay)"/>
+    </node>
+
+  </group>
 
 </launch>
