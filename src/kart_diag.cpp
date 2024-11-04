@@ -13,6 +13,10 @@ KartDiag::KartDiag() : Node("kart_diag") {
       declare_parameter<double>("alert_gnss_data_lost_sec");
   gnss_filter_node_name_ =
       declare_parameter<std::string>("gnss_filter_node_name");
+  steering_rate_alert_threshold_ =
+      declare_parameter<double>("steering_rate_alert_threshold");
+  steering_rate_lpf_alpha_ =
+      declare_parameter<double>("steering_rate_lpf_alpha");
 
   const auto prefix = "/" + gnss_filter_node_name_ + "/";
 
@@ -37,10 +41,16 @@ KartDiag::KartDiag() : Node("kart_diag") {
         prefix + "is_ekf_cov_large",
         rclcpp::QoS(rclcpp::KeepLast(10)).best_effort(),
         std::bind(&KartDiag::ekf_cov_large_callback, this, std::placeholders::_1));
+  sub_steering_report_ = this->create_subscription<SteeringReport>(
+        "/vehicle/status/steering_status",
+        rclcpp::QoS(rclcpp::KeepLast(10)).best_effort(),
+        std::bind(&KartDiag::steer_status_callback, this, std::placeholders::_1));
 
   // Publishers
   pub_gnss_data_lost_alert_ = this->create_publisher<Bool>(
       "~/is_gnss_lost", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
+  pub_steer_rate_limit_alert_ = this->create_publisher<Bool>(
+      "~/is_steer_rate_limit", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
 
   rclcpp::on_shutdown([this]() { this->on_shutdown(); });
 
@@ -97,6 +107,37 @@ void KartDiag::ekf_cov_large_callback(const Bool::SharedPtr msg) {
     RCLCPP_WARN_STREAM_THROTTLE(get_logger(), *get_clock(), 1000, "EKF covariance is too large!");
     ekf_cov_large_count_++;
   }
+}
+
+void KartDiag::steer_status_callback(const SteeringReport::SharedPtr msg) {
+  static bool first_time = true;
+  if (first_time) {
+    first_time = false;
+    filtered_angle_ = msg->steering_tire_angle;
+    last_filtered_angle_ = msg->steering_tire_angle;
+    last_steering_time_ = msg->stamp;
+    return;
+  }
+
+  filtered_angle_ = steering_rate_lpf_alpha_ * msg->steering_tire_angle +
+                    (1.0 - steering_rate_lpf_alpha_) * last_filtered_angle_;
+  const double dt = (rclcpp::Time{msg->stamp} - last_steering_time_).seconds();
+
+  Bool alert_msg;
+  if (dt > 0.0) {
+    const double steer_rate = (filtered_angle_ - last_filtered_angle_) / dt;
+    if (std::abs(steer_rate) > steering_rate_alert_threshold_) {
+      RCLCPP_WARN_STREAM_THROTTLE(get_logger(), *get_clock(), 1000, "Steering rate is too large: " << steer_rate);
+      alert_msg.data = true;
+    }
+    else {
+      alert_msg.data = false;
+    }
+  }
+  last_filtered_angle_ = filtered_angle_;
+  last_steering_time_ = msg->stamp;
+
+  pub_steer_rate_limit_alert_->publish(alert_msg);
 }
 
 void KartDiag::on_timer() {

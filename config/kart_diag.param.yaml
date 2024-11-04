@@ -2,6 +2,8 @@ kart_diag:
   ros__parameters:
     alert_gnss_duplication_count: 6 # TODO: 検討
     alert_gnss_data_lost_sec: 0.5
+    steering_rate_alert_threshold: 0.35 # rad/s
+    steering_rate_lpf_alpha: 0.1
     gnss_filter_node_name: "localization/gnss_filter"
 
 
