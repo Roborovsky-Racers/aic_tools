@@ -1,12 +1,12 @@
 /**:
   ros__parameters:
     gnss_queue_size: 3
+    ekf_queue_size: 500  # 50[Hz] * 10[s]
     default_gnss_pose_covariance: 0.1 # [m^2]
     gnss_pose_covariance_elapsed_scaling_factor: 100.0
     standard_gnss_publish_period: 0.1 # [s]
-    ekf_keep_duration: 1.0
-    outlier_threshold: 2.5
+    outlier_detection_angle_threshold: 0.8
     gnss_too_large_cov_threshold: 1000.0
     ekf_too_large_cov_threshold: 0.025
     enable_duplicate_detection: true
-    enable_outlier_detection: false
+    enable_outlier_detection: true

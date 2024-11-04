@@ -2,8 +2,8 @@
 <launch>
   <arg name="vehicle_model" default="racing_kart"  description="vehicle model name"/>
   <arg name="gnss_delay" default="0.5"/>
-  <arg name="use_filtered_gnss" default="false"/>
-  <arg name="use_sim_time"/>
+  <arg name="use_filtered_gnss" default="true"/>
+  <arg name="use_sim_time" default="true"/>
 
   <!-- Global parameters -->
   <group scoped="false">
@@ -18,7 +18,6 @@
 
     <node pkg="aic_tools" exec="gnss_filter" name="gnss_filter" output="both" args="--ros-args --log-level gnss_filter:=debug">
       <param from="$(find-pkg-share aic_tools)/config/gnss_filter.param.yaml"/>
-      <param name="gnss_delay_sec" value="$(var gnss_delay)"/>
       <remap from="/sensing/gnss/pose_with_covariance_filtered" to="/localization_test/sensing/gnss/pose_with_covariance_filtered"/>
     </node>
 
@@ -26,11 +25,13 @@
         <node pkg="imu_gnss_poser" exec="imu_gnss_poser_node" name="imu_gnss_poser" output="screen">
           <remap from="/sensing/gnss/pose_with_covariance" to="/localization_test/sensing/gnss/pose_with_covariance_filtered"/>
           <remap from="/localization/imu_gnss_poser/pose_with_covariance" to="/localization_test/imu_gnss_poser/pose_with_covariance"/>
+          <param name="use_static_covariance" value="false"/>
         </node>
     </group>
     <group unless="$(var use_filtered_gnss)">
         <node pkg="imu_gnss_poser" exec="imu_gnss_poser_node" name="imu_gnss_poser" output="screen">
           <remap from="/localization/imu_gnss_poser/pose_with_covariance" to="/localization_test/imu_gnss_poser/pose_with_covariance"/>
+          <param name="use_static_covariance" value="true"/>
         </node>
     </group>
 
