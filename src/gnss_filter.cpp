@@ -1,6 +1,7 @@
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64.hpp"
 
 #include "rclcpp/logging.hpp"
@@ -13,6 +14,7 @@ namespace aic_tools {
 
 class GnssFilter : public rclcpp::Node {
 public:
+  using Bool = std_msgs::msg::Bool;
   using Float64 = std_msgs::msg::Float64;
   using PoseWithCovarianceStamped =
       geometry_msgs::msg::PoseWithCovarianceStamped;
@@ -25,6 +27,7 @@ public:
     ekf_keep_duration_ = declare_parameter<double>("ekf_keep_duration");
     gnss_delay_sec_ = declare_parameter<double>("gnss_delay_sec");
     outlier_threshold_ = declare_parameter<double>("outlier_threshold");
+    too_large_cov_threshold_ = declare_parameter<double>("too_large_cov_threshold");
     enable_duplicate_detection_ =
         declare_parameter<bool>("enable_duplicate_detection");
     enable_outlier_detection_ =
@@ -40,6 +43,14 @@ public:
         "~/gnss_yaw", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
     pub_yaw_diff_ = this->create_publisher<Float64>(
         "~/gnss_yaw_diff", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
+    pub_duplication_alert_ = this->create_publisher<Bool>(
+        "~/is_gnss_duplication_detected", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
+    pub_outlier_alert_ = this->create_publisher<Bool>(
+        "~/is_gnss_outlier_detected", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
+    pub_gnss_large_cov_alert_ = this->create_publisher<Bool>(
+        "~/is_gnss_cov_large", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
+    pub_ekf_large_cov_alert_ = this->create_publisher<Bool>(
+        "~/is_ekf_cov_large", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
 
     sub_gnss_ = this->create_subscription<PoseWithCovarianceStamped>(
         "/sensing/gnss/pose_with_covariance",
@@ -55,10 +66,27 @@ public:
 private:
   void gnss_callback(const PoseWithCovarianceStamped::SharedPtr msg) {
     // drop duplicate message
+    auto duplication_alert = Bool();
     if (is_duplicate(*msg)) {
       RCLCPP_DEBUG(get_logger(), "Dropped duplicate message");
+      duplication_alert.data = true;
+      pub_duplication_alert_->publish(duplication_alert);
       return;
     }
+    else {
+      duplication_alert.data = false;
+      pub_duplication_alert_->publish(duplication_alert);
+    }
+
+    auto gnss_large_cov_alert = Bool();
+    if (msg->pose.covariance[0] > too_large_cov_threshold_) {
+      RCLCPP_DEBUG(get_logger(), "Too large covariance detected!");
+      gnss_large_cov_alert.data = true;
+    }
+    else {
+      gnss_large_cov_alert.data = false;
+    }
+    pub_gnss_large_cov_alert_->publish(gnss_large_cov_alert);
 
     // push unique data to queue
     if (gnss_queue_.size() >= gnss_queue_size_) {
@@ -67,9 +95,16 @@ private:
     gnss_queue_.push_back(*msg);
 
     // drop outlier message
+    auto outlier_alert = Bool();
     if (is_outlier(*msg)) {
       RCLCPP_WARN(get_logger(), "Dropped outlier message");
+      outlier_alert.data = true;
+      pub_outlier_alert_->publish(outlier_alert);
       return;
+    }
+    else{
+      outlier_alert.data = false;
+      pub_outlier_alert_->publish(outlier_alert);
     }
 
     // publish the filtered message
@@ -79,6 +114,15 @@ private:
 
   void ekf_odom_callback(const Odometry::SharedPtr msg) {
     ekf_odom_queue_.push_back(*msg);
+    Bool ekf_large_cov_alert;
+    if (msg->pose.covariance[0] > too_large_cov_threshold_) {
+      RCLCPP_DEBUG(get_logger(), "Too large covariance detected!");
+      ekf_large_cov_alert.data = true;
+    }
+    else {
+      ekf_large_cov_alert.data = false;
+    }
+    pub_ekf_large_cov_alert_->publish(ekf_large_cov_alert);
   }
 
   bool is_duplicate(const PoseWithCovarianceStamped &p0,
@@ -194,6 +238,7 @@ private:
   rclcpp::Publisher<PoseWithCovarianceStamped>::SharedPtr pub_gnss_;
   rclcpp::Publisher<Float64>::SharedPtr pub_distance_;
   rclcpp::Publisher<Float64>::SharedPtr pub_yaw_, pub_yaw_diff_;
+  rclcpp::Publisher<Bool>::SharedPtr pub_duplication_alert_, pub_outlier_alert_, pub_gnss_large_cov_alert_, pub_ekf_large_cov_alert_;
 
   rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr sub_gnss_;
   rclcpp::Subscription<Odometry>::SharedPtr sub_ekf_odom_;
@@ -206,6 +251,7 @@ private:
   double ekf_keep_duration_;
   double outlier_threshold_;
   double gnss_delay_sec_;
+  double too_large_cov_threshold_;
   bool enable_duplicate_detection_;
   bool enable_outlier_detection_;
 
