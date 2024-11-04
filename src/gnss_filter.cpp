@@ -80,7 +80,7 @@ private:
 
     auto gnss_large_cov_alert = Bool();
     if (msg->pose.covariance[0] > too_large_cov_threshold_) {
-      RCLCPP_WARN(get_logger(), "Too large covariance detected!");
+      RCLCPP_DEBUG(get_logger(), "Too large covariance detected!");
       gnss_large_cov_alert.data = true;
     }
     else {
@@ -116,7 +116,7 @@ private:
     ekf_odom_queue_.push_back(*msg);
     Bool ekf_large_cov_alert;
     if (msg->pose.covariance[0] > too_large_cov_threshold_) {
-      RCLCPP_WARN(get_logger(), "Too large covariance detected!");
+      RCLCPP_DEBUG(get_logger(), "Too large covariance detected!");
       ekf_large_cov_alert.data = true;
     }
     else {
