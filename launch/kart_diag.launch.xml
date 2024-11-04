@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-  <arg name="gnss_delay" default="0.5"/>
+  <arg name="gnss_delay" default="0.3"/>
 
   <group>
-    <node pkg="aic_tools" exec="gnss_filter" name="gnss_filter" output="both" args="--ros-args --log-level gnss_filter:=fatal">
+    <node pkg="aic_tools" exec="gnss_filter" name="gnss_filter_for_diag" output="both" args="--ros-args --log-level gnss_filter_for_diag:=fatal">
       <param from="$(find-pkg-share aic_tools)/config/kart_diag.param.yaml"/>
       <param name="gnss_delay_sec" value="$(var gnss_delay)"/>
+      <remap from="/sensing/gnss/pose_with_covariance_filtered" to="/sensing/gnss/pose_with_covariance_filtered/muted"/>
+      <remap from="~/distance_from_ekf" to="~/distance_from_ekf/muted"/>
+      <remap from="~/gnss_yaw" to="~/gnss_yaw/muted"/>
+      <remap from="~/gnss_yaw_diff" to="~/gnss_yaw_diff/muted"/>
     </node>
 
     <node pkg="aic_tools" exec="kart_diag" name="kart_diag" output="both" args="--ros-args --log-level gnss_filter:=info">
       <param from="$(find-pkg-share aic_tools)/config/kart_diag.param.yaml"/>
-      <param name="gnss_delay_sec" value="$(var gnss_delay)"/>
     </node>
 
   </group>
