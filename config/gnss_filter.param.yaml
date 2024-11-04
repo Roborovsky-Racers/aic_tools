@@ -6,6 +6,7 @@
     gnss_pose_covariance_elapsed_scaling_factor: 100.0
     standard_gnss_publish_period: 0.1 # [s]
     outlier_detection_angle_threshold: 0.8
+    outlier_detection_distance_threshold: 0.1
     gnss_too_large_cov_threshold: 1000.0
     ekf_too_large_cov_threshold: 0.025
     enable_duplicate_detection: true

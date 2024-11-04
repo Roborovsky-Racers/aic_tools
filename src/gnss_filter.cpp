@@ -35,6 +35,7 @@ public:
     gnss_pose_covariance_elapsed_scaling_factor_ = declare_parameter<double>("gnss_pose_covariance_elapsed_scaling_factor");
     standard_gnss_publish_period_ = declare_parameter<double>("standard_gnss_publish_period");
     outlier_detection_angle_threshold_ = declare_parameter<double>("outlier_detection_angle_threshold");
+    outlier_detection_distance_threshold_ = declare_parameter<double>("outlier_detection_distance_threshold");
     gnss_too_large_cov_threshold_ = declare_parameter<double>("gnss_too_large_cov_threshold");
     ekf_too_large_cov_threshold_ = declare_parameter<double>("ekf_too_large_cov_threshold");
     enable_duplicate_detection_ =
@@ -245,7 +246,7 @@ private:
       const double dx = p1.position.x - p0.position.x;
       const double dy = p1.position.y - p0.position.y;
       const double norm = std::sqrt(dx * dx + dy * dy);
-      return Eigen::Vector2d(dx / norm, dy / norm);
+      return std::make_tuple(Eigen::Vector2d(dx / norm, dy / norm), norm);
     };
 
     const auto get_nearest_stamp_ekf_pose = [&](const builtin_interfaces::msg::Time &time_msg, const bool pop_old) {
@@ -281,8 +282,13 @@ private:
     const auto last_reliable_gnss_stamped_ekf_pose = get_nearest_stamp_ekf_pose(last_reliable_gnss_pose.header.stamp, true);
     const auto latest_gnss_stamped_ekf_pose = get_nearest_stamp_ekf_pose(latest_gnss_pose.header.stamp, false);
 
-    const auto gnss_diff_unit_vector = compute_position_diff_unit_vector(last_reliable_gnss_pose.pose.pose, latest_gnss_pose.pose.pose);
-    const auto ekf_diff_unit_vector = compute_position_diff_unit_vector(last_reliable_gnss_stamped_ekf_pose, latest_gnss_stamped_ekf_pose);
+    const auto [gnss_diff_unit_vector, gnss_diff_norm] = compute_position_diff_unit_vector(last_reliable_gnss_pose.pose.pose, latest_gnss_pose.pose.pose);
+    const auto [ekf_diff_unit_vector, ekf_diff_norm] = compute_position_diff_unit_vector(last_reliable_gnss_stamped_ekf_pose, latest_gnss_stamped_ekf_pose);
+
+    // if the difference of ekf is too small, angle check is not reliable
+    if(ekf_diff_norm < outlier_detection_distance_threshold_) {
+      return false;
+    }
 
     // RCLCPP_WARN(get_logger(), "gnss pose last: (%f, %f), latest: (%f, %f), ekf pose last: (%f, %f), latest: (%f, %f)", last_reliable_gnss_pose.pose.pose.position.x, last_reliable_gnss_pose.pose.pose.position.y, latest_gnss_pose.pose.pose.position.x, latest_gnss_pose.pose.pose.position.y, last_reliable_gnss_stamped_ekf_pose.position.x, last_reliable_gnss_stamped_ekf_pose.position.y, latest_gnss_stamped_ekf_pose.position.x, latest_gnss_stamped_ekf_pose.position.y);
 
@@ -298,7 +304,7 @@ private:
     RCLCPP_DEBUG(get_logger(), "angle: %f", angle_between_gnss_and_ekf);
 
     if(angle_between_gnss_and_ekf > outlier_detection_angle_threshold_) {
-      RCLCPP_WARN(get_logger(), "Outlier detected! angle_between_gnss_and_ekf: %f", angle_between_gnss_and_ekf);
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000, "Outlier detected! angle_between_gnss_and_ekf: %f", angle_between_gnss_and_ekf);
       return true;
     }
 
@@ -326,6 +332,7 @@ private:
   double gnss_too_large_cov_threshold_;
   double ekf_too_large_cov_threshold_;
   double outlier_detection_angle_threshold_;
+  double outlier_detection_distance_threshold_;
   bool enable_duplicate_detection_;
   bool enable_outlier_detection_;
 
