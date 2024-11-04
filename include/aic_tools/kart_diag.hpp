@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <unordered_map>
 
 #include <rclcpp/rclcpp.hpp>
@@ -21,24 +22,31 @@ public:
   KartDiag();
 
 private:
+bool mpc_controller_alive_{false};
 
 // Subscribers
 rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr sub_gnss_;
 rclcpp::Subscription<Bool>::SharedPtr sub_gnss_duplication_, sub_gnss_outlier_, sub_gnss_cov_large_, sub_ekf_cov_large_;
-rclcpp::Subscription<Empty>::SharedPtr sub_mpc_dead_signal_;
 
 // Publishers
 rclcpp::Publisher<Bool>::SharedPtr pub_gnss_data_lost_alert_;
-
 
 // Duplication detection
 size_t gnss_duplication_count_;
 std::unordered_map<size_t, size_t> gnss_duplication_count_map_;
 rclcpp::Time last_gnss_time_{0, 0};
 
+// Outlier detection
+size_t gnss_outlier_count_;
+
+// Covariance large alert
+size_t gnss_cov_large_count_;
+size_t ekf_cov_large_count_;
+
 // Parameters
 size_t alert_gnss_duplication_count_;
 double alert_gnss_data_lost_sec_;
+std::string gnss_filter_node_name_;
 
 // Timer
 rclcpp::TimerBase::SharedPtr timer_;
