@@ -33,6 +33,7 @@ rclcpp::Subscription<SteeringReport>::SharedPtr sub_steering_report_;
 
 // Publishers
 rclcpp::Publisher<Bool>::SharedPtr pub_gnss_data_lost_alert_;
+rclcpp::Publisher<Bool>::SharedPtr pub_steer_rate_limit_alert_;
 
 // Duplication detection
 size_t gnss_duplication_count_;
