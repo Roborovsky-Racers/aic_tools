@@ -1,15 +1,16 @@
-gnss_filter:
+gnss_filter_for_diag:
   ros__parameters:
     gnss_queue_size: 1
     ekf_keep_duration: 1.0
     outlier_threshold: 1.0
-    too_large_cov_threshold: 0.025 # TODO:検討
+    too_large_cov_threshold: 0.04 # TODO:検討
     enable_duplicate_detection: true
     enable_outlier_detection: true
 
 kart_diag:
   ros__parameters:
-    alert_gnss_duplication_count: 5 # TODO: 検討
+    alert_gnss_duplication_count: 6 # TODO: 検討
     alert_gnss_data_lost_sec: 0.5
+    gnss_filter_node_name: "gnss_filter_for_diag"
 
 
