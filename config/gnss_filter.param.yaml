@@ -8,6 +8,6 @@
     outlier_detection_angle_threshold: 0.8
     outlier_detection_distance_threshold: 0.1
     gnss_too_large_cov_threshold: 1000.0
-    ekf_too_large_cov_threshold: 0.025
+    ekf_too_large_cov_threshold: 0.04 # TODO:検討
     enable_duplicate_detection: true
     enable_outlier_detection: true
