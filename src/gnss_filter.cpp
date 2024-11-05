@@ -132,12 +132,29 @@ private:
     // compute elapsed time from the last unique gnss message
     const auto elapsed_from_last_unique_gnss_received = gnss_queue_.empty() ? 0.0 : compute_stamp_difference(gnss_queue_.back(), *msg);
 
+    const bool is_gnss_lost = elapsed_from_last_unique_gnss_received > 1.0;
+
     // compute covariance
-    if(is_gnss_too_large_cov_detected || is_outlier_detected) {
+    static constexpr auto UNRELIABLE_COVARIANCE = 100000.0;
+    const auto MAX_UNRELIABLE_GNSS_COUNT = static_cast<size_t>(2.0 / standard_gnss_publish_period_);
+    if(is_gnss_too_large_cov_detected || is_outlier_detected || is_gnss_lost) {
       // Set high covariance if the covariance is too large or the message is outlier
-      msg->pose.covariance[7*0] = 100000.0;
-      msg->pose.covariance[7*1] = 100000.0;
-      msg->pose.covariance[7*2] = 100000.0;
+      msg->pose.covariance[7*0] = UNRELIABLE_COVARIANCE;
+      msg->pose.covariance[7*1] = UNRELIABLE_COVARIANCE;
+      msg->pose.covariance[7*2] = UNRELIABLE_COVARIANCE;
+      unreliable_gnss_count_ = MAX_UNRELIABLE_GNSS_COUNT;
+    } else if(unreliable_gnss_count_ > 0) {
+      // Decrease the covariance stepwise according to the unreliable gnss count
+      --unreliable_gnss_count_;
+      // const auto scale = 1.0 / std::pow(10.0, MAX_UNRELIABLE_GNSS_COUNT - unreliable_gnss_count_);
+      const auto scale = std::pow(1.0 / UNRELIABLE_COVARIANCE, 
+                               static_cast<double>(MAX_UNRELIABLE_GNSS_COUNT - unreliable_gnss_count_) 
+                               / MAX_UNRELIABLE_GNSS_COUNT);
+      const auto pose_cov = UNRELIABLE_COVARIANCE * scale;
+      RCLCPP_WARN(get_logger(), "Decrease the covariance scale: %f, pose_cov: %f", scale, pose_cov);
+      msg->pose.covariance[7*0] = pose_cov;
+      msg->pose.covariance[7*1] = pose_cov;
+      msg->pose.covariance[7*2] = pose_cov;
     }
     else {
       // Increase the covariance stepwise according to the elapsed time from the last unique gnss message
@@ -339,6 +356,7 @@ private:
   // runtime states
   std::optional<geometry_msgs::msg::PoseWithCovarianceStamped> last_reliable_gnss_pose_;
   size_t duplication_count_ = 0;
+  size_t unreliable_gnss_count_ = 0;
 };
 
 } // namespace aic_tools

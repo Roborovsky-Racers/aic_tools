@@ -1,6 +1,6 @@
 /**:
   ros__parameters:
-    gnss_queue_size: 3
+    gnss_queue_size: 10
     ekf_queue_size: 500  # 50[Hz] * 10[s]
     default_gnss_pose_covariance: 0.1 # [m^2]
     gnss_pose_covariance_elapsed_scaling_factor: 100.0
