@@ -17,6 +17,8 @@ KartDiag::KartDiag() : Node("kart_diag") {
       declare_parameter<double>("steering_rate_alert_threshold");
   steering_rate_lpf_alpha_ =
       declare_parameter<double>("steering_rate_lpf_alpha");
+  acc_lpf_alpha_ =
+      declare_parameter<double>("acc_lpf_alpha");
 
   const auto prefix = "/" + gnss_filter_node_name_ + "/";
 
@@ -45,12 +47,18 @@ KartDiag::KartDiag() : Node("kart_diag") {
         "/vehicle/status/steering_status",
         rclcpp::QoS(rclcpp::KeepLast(10)).best_effort(),
         std::bind(&KartDiag::steer_status_callback, this, std::placeholders::_1));
+   sub_vel_status_ = this->create_subscription<VelReport>(
+      "/vehicle/status/velocity_status",
+      rclcpp::QoS(rclcpp::KeepLast(10)).reliable(),
+      std::bind(&KartDiag::vel_status_callback, this, std::placeholders::_1));
 
   // Publishers
   pub_gnss_data_lost_alert_ = this->create_publisher<Bool>(
       "~/is_gnss_lost", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
   pub_steer_rate_limit_alert_ = this->create_publisher<Bool>(
       "~/is_steer_rate_limit", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
+  pub_estimated_acc_ = this->create_publisher<Float64>(
+      "~/estimated_acc", rclcpp::QoS(rclcpp::KeepLast(10)).best_effort());
 
   rclcpp::on_shutdown([this]() { this->on_shutdown(); });
 
@@ -138,6 +146,31 @@ void KartDiag::steer_status_callback(const SteeringReport::SharedPtr msg) {
   last_steering_time_ = msg->stamp;
 
   pub_steer_rate_limit_alert_->publish(alert_msg);
+}
+
+void KartDiag::vel_status_callback(const VelReport::SharedPtr msg) {
+  // Compute estimated acceleration
+  static bool first_time = true;
+  if (first_time) {
+    first_time = false;
+    filtered_speed_ = msg->longitudinal_velocity;
+    last_filtered_speed_ = msg->longitudinal_velocity;
+    last_speed_time_ = msg->header.stamp;
+    return;
+  }
+
+  filtered_speed_ = acc_lpf_alpha_ * msg->longitudinal_velocity +
+                    (1.0 - acc_lpf_alpha_) * last_filtered_speed_;
+  const double dt = (rclcpp::Time{msg->header.stamp} - last_speed_time_).seconds();
+
+  if (dt > 0.0) {
+    const double acc = (filtered_speed_ - last_filtered_speed_) / dt;
+    Float64 acc_msg;
+    acc_msg.data = acc;
+    pub_estimated_acc_->publish(acc_msg);
+  }
+  last_filtered_speed_ = filtered_speed_;
+  last_speed_time_ = msg->header.stamp;
 }
 
 void KartDiag::on_timer() {

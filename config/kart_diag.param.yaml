@@ -5,5 +5,6 @@ kart_diag:
     steering_rate_alert_threshold: 0.35 # rad/s
     steering_rate_lpf_alpha: 0.1
     gnss_filter_node_name: "localization/gnss_filter"
+    acc_lpf_alpha: 0.3
 
 
